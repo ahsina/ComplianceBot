@@ -2,6 +2,7 @@ using AutoMapper;
 using ComplianceBot.Application.Common.DTOs;
 using ComplianceBot.Application.Common.Interfaces;
 using ComplianceBot.Domain.Entities;
+using ComplianceBot.Domain.Exceptions;
 using MediatR;
 
 namespace ComplianceBot.Application.Identity.Commands.CreateUser;
@@ -13,17 +14,20 @@ namespace ComplianceBot.Application.Identity.Commands.CreateUser;
 public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, UserDto>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IIdentityService _identityService;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUser;
     private readonly IMapper _mapper;
 
     public CreateUserCommandHandler(
         IApplicationDbContext context,
+        IIdentityService identityService,
         ITenantContext tenantContext,
         ICurrentUserService currentUser,
         IMapper mapper)
     {
         _context = context;
+        _identityService = identityService;
         _tenantContext = tenantContext;
         _currentUser = currentUser;
         _mapper = mapper;
@@ -31,8 +35,16 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, UserD
 
     public async Task<UserDto> Handle(CreateUserCommand request, CancellationToken cancellationToken)
     {
-        // TODO: Create identity user and get IdentityId
-        var identityId = Guid.NewGuid().ToString(); // Placeholder
+        // Create identity user with password hashing
+        var (success, identityId, errorMessage) = await _identityService.CreateUserAsync(
+            request.Email,
+            request.Password,
+            _tenantContext.TenantId);
+
+        if (!success)
+        {
+            throw new ValidationException(errorMessage);
+        }
 
         var user = new User
         {

@@ -12,15 +12,18 @@ namespace ComplianceBot.Infrastructure.Identity;
 public class AuthenticationService : IAuthenticationService
 {
     private readonly IApplicationDbContext _context;
+    private readonly IIdentityService _identityService;
     private readonly JwtTokenService _jwtTokenService;
     private readonly ILogger<AuthenticationService> _logger;
 
     public AuthenticationService(
         IApplicationDbContext context,
+        IIdentityService identityService,
         JwtTokenService jwtTokenService,
         ILogger<AuthenticationService> logger)
     {
         _context = context;
+        _identityService = identityService;
         _jwtTokenService = jwtTokenService;
         _logger = logger;
     }
@@ -56,9 +59,8 @@ public class AuthenticationService : IAuthenticationService
             };
         }
 
-        // TODO: Verify password with Identity provider
-        // For now, this is a placeholder
-        var passwordValid = await VerifyPasswordAsync(user.IdentityId, password);
+        // Verify password with Identity provider
+        var passwordValid = await _identityService.ValidatePasswordAsync(email, password);
 
         if (!passwordValid)
         {
@@ -89,8 +91,10 @@ public class AuthenticationService : IAuthenticationService
         var accessToken = _jwtTokenService.GenerateAccessToken(userInfo);
         var refreshToken = _jwtTokenService.GenerateRefreshToken();
         var expiresAt = DateTime.UtcNow.AddMinutes(60);
+        var refreshTokenExpiry = DateTime.UtcNow.AddDays(7); // 7 days
 
-        // TODO: Store refresh token in database
+        // Store refresh token in Identity database
+        await _identityService.SetRefreshTokenAsync(user.IdentityId, refreshToken, refreshTokenExpiry);
 
         _logger.LogInformation("User authenticated successfully: {Email}", email);
 
@@ -108,22 +112,64 @@ public class AuthenticationService : IAuthenticationService
         string refreshToken,
         CancellationToken cancellationToken = default)
     {
-        // TODO: Implement refresh token validation and rotation
-        await Task.CompletedTask;
+        // Validate refresh token
+        var (valid, identityUserId) = await _identityService.ValidateRefreshTokenAsync(refreshToken);
+
+        if (!valid)
+        {
+            _logger.LogWarning("Invalid refresh token");
+            return new AuthenticationResult
+            {
+                Success = false,
+                ErrorMessage = "Invalid or expired refresh token"
+            };
+        }
+
+        // Find user by identity ID
+        var user = await _context.Users
+            .Include(u => u.Tenant)
+            .FirstOrDefaultAsync(u => u.IdentityId == identityUserId, cancellationToken);
+
+        if (user == null || !user.IsActive || user.Tenant == null || !user.Tenant.IsActive)
+        {
+            _logger.LogWarning("Refresh token for inactive user or tenant");
+            return new AuthenticationResult
+            {
+                Success = false,
+                ErrorMessage = "Account is not active"
+            };
+        }
+
+        // Generate new tokens
+        var userInfo = new UserInfo
+        {
+            UserId = user.Id,
+            TenantId = user.TenantId,
+            Email = user.Email,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Role = user.Role.ToString(),
+            Permissions = GetUserPermissions(user.Role)
+        };
+
+        var newAccessToken = _jwtTokenService.GenerateAccessToken(userInfo);
+        var newRefreshToken = _jwtTokenService.GenerateRefreshToken();
+        var expiresAt = DateTime.UtcNow.AddMinutes(60);
+        var refreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+
+        // Rotate refresh token
+        await _identityService.SetRefreshTokenAsync(identityUserId, newRefreshToken, refreshTokenExpiry);
+
+        _logger.LogInformation("Token refreshed for user: {Email}", user.Email);
 
         return new AuthenticationResult
         {
-            Success = false,
-            ErrorMessage = "Refresh token functionality not implemented yet"
+            Success = true,
+            AccessToken = newAccessToken,
+            RefreshToken = newRefreshToken,
+            ExpiresAt = expiresAt,
+            User = userInfo
         };
-    }
-
-    private async Task<bool> VerifyPasswordAsync(string identityId, string password)
-    {
-        // TODO: Implement password verification with Identity provider
-        // This is a placeholder - never use in production!
-        await Task.CompletedTask;
-        return true; // Placeholder
     }
 
     private List<string> GetUserPermissions(UserRole role)

@@ -1,6 +1,9 @@
 using ComplianceBot.API.Middleware;
 using ComplianceBot.Application;
 using ComplianceBot.Infrastructure;
+using ComplianceBot.Infrastructure.BackgroundJobs;
+using Hangfire;
+using Hangfire.SqlServer;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -97,6 +100,26 @@ builder.Services.AddCors(options =>
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<ComplianceBot.Infrastructure.Persistence.ComplianceBotDbContext>();
 
+// Hangfire for background jobs
+builder.Services.AddHangfire(configuration => configuration
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection"),
+        new SqlServerStorageOptions
+        {
+            CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+            SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+            QueuePollInterval = TimeSpan.Zero,
+            UseRecommendedIsolationLevel = true,
+            DisableGlobalLocks = true
+        }));
+
+builder.Services.AddHangfireServer();
+
+// Register job scheduler
+builder.Services.AddScoped<HangfireJobScheduler>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -117,8 +140,24 @@ app.UseAuthorization();
 
 app.UseTenantMiddleware();
 
+// Hangfire Dashboard (only in development)
+if (app.Environment.IsDevelopment())
+{
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = new[] { new HangfireAuthorizationFilter() }
+    });
+}
+
 app.MapControllers();
 
 app.MapHealthChecks("/health");
+
+// Schedule recurring jobs on startup
+using (var scope = app.Services.CreateScope())
+{
+    var jobScheduler = scope.ServiceProvider.GetRequiredService<HangfireJobScheduler>();
+    jobScheduler.ScheduleRecurringJobs();
+}
 
 app.Run();
