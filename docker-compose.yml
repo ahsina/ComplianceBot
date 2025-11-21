@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: compliancebot-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong@Passw0rd
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    networks:
+      - compliancebot-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: compliancebot-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - compliancebot-network
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    container_name: compliancebot-azurite
+    ports:
+      - "10000:10000"  # Blob service
+      - "10001:10001"  # Queue service
+      - "10002:10002"  # Table service
+    volumes:
+      - azurite-data:/data
+    networks:
+      - compliancebot-network
+
+  # Uncomment when API is ready to run in Docker
+  # api:
+  #   build:
+  #     context: .
+  #     dockerfile: src/ComplianceBot.API/Dockerfile
+  #   container_name: compliancebot-api
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #     - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=ComplianceBot;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True
+  #     - ConnectionStrings__AzureBlobStorage=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+  #   ports:
+  #     - "5000:80"
+  #     - "5001:443"
+  #   depends_on:
+  #     - sqlserver
+  #     - redis
+  #     - azurite
+  #   networks:
+  #     - compliancebot-network
+
+volumes:
+  sqlserver-data:
+  redis-data:
+  azurite-data:
+
+networks:
+  compliancebot-network:
+    driver: bridge

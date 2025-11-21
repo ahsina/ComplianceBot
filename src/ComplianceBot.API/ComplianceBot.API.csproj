@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ComplianceBot.Application\ComplianceBot.Application.csproj" />
+    <ProjectReference Include="..\ComplianceBot.Infrastructure\ComplianceBot.Infrastructure.csproj" />
+    <ProjectReference Include="..\ComplianceBot.Modules\RBE\ComplianceBot.Modules.RBE.csproj" />
+    <ProjectReference Include="..\ComplianceBot.Modules\CEDR\ComplianceBot.Modules.CEDR.csproj" />
+    <ProjectReference Include="..\ComplianceBot.Modules\FATCA\ComplianceBot.Modules.FATCA.csproj" />
+    <ProjectReference Include="..\ComplianceBot.Modules\CRS\ComplianceBot.Modules.CRS.csproj" />
+    <ProjectReference Include="..\ComplianceBot.Modules\SFDR\ComplianceBot.Modules.SFDR.csproj" />
+    <ProjectReference Include="..\ComplianceBot.Modules\Shared\ComplianceBot.Modules.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.10" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.1" />
+    <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.9" />
+    <PackageReference Include="Hangfire.SqlServer" Version="1.8.9" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ComplianceBot.Application\ComplianceBot.Application.csproj" />
+    <ProjectReference Include="..\ComplianceBot.Infrastructure\ComplianceBot.Infrastructure.csproj" />
+    <ProjectReference Include="..\ComplianceBot.Modules\Shared\ComplianceBot.Modules.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Hangfire.Core" Version="1.8.9" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.17.5" />
+  </ItemGroup>
+
+</Project>
