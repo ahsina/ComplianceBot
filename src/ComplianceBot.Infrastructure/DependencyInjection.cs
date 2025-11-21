@@ -30,6 +30,10 @@ public static class DependencyInjection
         services.AddScoped<ITenantContext, TenantContext>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
+        // Authentication
+        services.AddSingleton<JwtTokenService>();
+        services.AddScoped<IAuthenticationService, AuthenticationService>();
+
         // File storage
         services.AddSingleton<IFileStorageService, AzureBlobStorageService>();
 
