@@ -37,6 +37,7 @@ public class CreateReportCommandHandler : IRequestHandler<CreateReportCommand, R
             TenantId = _tenantContext.TenantId,
             Type = request.Type,
             Status = ReportStatus.Draft,
+            IsSandbox = request.IsSandbox,
             ReportingPeriod = request.ReportingPeriod,
             FiscalYear = request.FiscalYear,
             DueDate = request.DueDate,

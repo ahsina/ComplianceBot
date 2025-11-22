@@ -1,3 +1,4 @@
+using ComplianceBot.Application.Common.Services;
 using ComplianceBot.Application.Reports.Commands.CreateReport;
 using ComplianceBot.Application.Reports.Commands.DeleteReport;
 using ComplianceBot.Application.Reports.Commands.SubmitReport;
@@ -20,10 +21,12 @@ namespace ComplianceBot.API.Controllers;
 public class ReportsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ISandboxDataGenerator _sandboxDataGenerator;
 
-    public ReportsController(IMediator mediator)
+    public ReportsController(IMediator mediator, ISandboxDataGenerator sandboxDataGenerator)
     {
         _mediator = mediator;
+        _sandboxDataGenerator = sandboxDataGenerator;
     }
 
     /// <summary>
@@ -124,6 +127,61 @@ public class ReportsController : ControllerBase
         await _mediator.Send(command);
         return NoContent();
     }
+
+    /// <summary>
+    /// Create a sandbox/test report (no real submission)
+    /// </summary>
+    [HttpPost("sandbox")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CreateSandboxReport([FromBody] CreateSandboxReportRequest request)
+    {
+        var command = new CreateReportCommand
+        {
+            Type = request.Type,
+            ReportingPeriod = request.ReportingPeriod,
+            FiscalYear = request.FiscalYear,
+            DueDate = request.DueDate,
+            IsSandbox = true // Mark as sandbox
+        };
+
+        var result = await _mediator.Send(command);
+        return CreatedAtAction(nameof(GetReport), new { id = result.Id }, result);
+    }
+
+    /// <summary>
+    /// Get sample data for a specific report type (sandbox testing)
+    /// </summary>
+    [HttpGet("sandbox/{reportType}/sample-data")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetSandboxSampleData(ReportType reportType)
+    {
+        if (!_sandboxDataGenerator.IsSupported(reportType))
+        {
+            return BadRequest(new
+            {
+                error = $"Sample data generation is not supported for report type: {reportType}"
+            });
+        }
+
+        // Get tenant ID from claims (should be available from authentication)
+        var tenantIdClaim = User.FindFirst("tenantId")?.Value;
+        if (string.IsNullOrEmpty(tenantIdClaim) || !Guid.TryParse(tenantIdClaim, out var tenantId))
+        {
+            return BadRequest(new { error = "Tenant ID not found in authentication claims" });
+        }
+
+        var sampleData = await _sandboxDataGenerator.GenerateSampleDataAsync(reportType, tenantId);
+
+        return Ok(new
+        {
+            reportType = reportType.ToString(),
+            isSandbox = true,
+            generatedAt = DateTime.UtcNow,
+            data = System.Text.Json.JsonDocument.Parse(sampleData)
+        });
+    }
 }
 
 /// <summary>
@@ -133,4 +191,15 @@ public record UpdateReportStatusRequest
 {
     public ReportStatus Status { get; init; }
     public string? Notes { get; init; }
+}
+
+/// <summary>
+/// Request model for creating sandbox reports
+/// </summary>
+public record CreateSandboxReportRequest
+{
+    public ReportType Type { get; init; }
+    public string ReportingPeriod { get; init; } = string.Empty;
+    public int? FiscalYear { get; init; }
+    public DateTime? DueDate { get; init; }
 }

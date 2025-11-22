@@ -1,5 +1,6 @@
 using System.Reflection;
 using ComplianceBot.Application.Common.Behaviors;
+using ComplianceBot.Application.Common.Services;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +29,9 @@ public static class DependencyInjection
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
+
+        // Register sandbox services
+        services.AddSingleton<ISandboxDataGenerator, SandboxDataGenerator>();
 
         return services;
     }

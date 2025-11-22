@@ -12,6 +12,11 @@ public class Report : TenantEntity
     public ReportStatus Status { get; set; } = ReportStatus.Draft;
 
     /// <summary>
+    /// Indicates if this is a sandbox/test report (no real submission)
+    /// </summary>
+    public bool IsSandbox { get; set; } = false;
+
+    /// <summary>
     /// Reporting period (e.g., "2024-01" for RBE January 2024)
     /// </summary>
     public string ReportingPeriod { get; set; } = string.Empty;

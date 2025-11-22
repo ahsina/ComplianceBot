@@ -14,4 +14,5 @@ public record CreateReportCommand : IRequest<ReportDto>
     public int? FiscalYear { get; init; }
     public DateTime? DueDate { get; init; }
     public string? Notes { get; init; }
+    public bool IsSandbox { get; init; } = false;
 }
